@@ -2,8 +2,9 @@
 * Program name: M08_Project.cpp
 * Author: Donovan Blake
 * Date started: 7/25/2022
-* Date last updated: today
-* Purpose: Play the board game Sorry!
+* Date last updated: 7/27/2022
+* Purpose: Play the board game Sorry! with 2d6
+* GitRepo: https://github.com/UnusualParticle/M08_Project
 */
 
 // Using the SFML 2.5.1 Library for graphics and system API
@@ -433,18 +434,6 @@ int main()
 	sf::RenderWindow window{ {(size_t)Settings::windowSize.x, (size_t)Settings::windowSize.y},"Sorry!"};
 	Settings::initialize();
 
-	sf::Sprite board{ Settings::boardTexture };
-	Button_t roll{ {225.f,720.f},{160.f,80.f},"Roll" };
-
-	Dice_t d0{};
-	Dice_t d1{};
-	d0.setPosition({ 203.f, 585.f });
-	d1.setPosition({ 337.f, 585.f });
-
-	sf::Text information{ "Player 1 turn, Roll a double to start!", Settings::font, 20u };
-	sf::Text result{"",Settings::font, 20u};
-	information.setPosition({203.f, 400.f});
-	result.setPosition({203.f,530.f});
 
 	bool exit{};
 	while (!exit)
@@ -454,8 +443,22 @@ int main()
 		size_t playerCount{ promptPlayers(window) };
 		std::vector<Player_t> players{};
 		players.resize(playerCount);
-		int diceRolls[11]{};
+		const size_t ROLLTOTALS{ 11 };
+		int diceRolls[ROLLTOTALS]{};
 
+		// Setup game parts
+		sf::Sprite board{ Settings::boardTexture };
+		Button_t roll{ {225.f,720.f},{160.f,80.f},"Roll" };
+
+		Dice_t d0{};
+		Dice_t d1{};
+		d0.setPosition({ 203.f, 585.f });
+		d1.setPosition({ 337.f, 585.f });
+
+		sf::Text information{ "Player 1 turn, Roll a double to start!", Settings::font, 20u };
+		sf::Text result{ "",Settings::font, 20u };
+		information.setPosition({ 203.f, 400.f });
+		result.setPosition({ 203.f,530.f });
 
 		// Play the game
 		GameState state{};
@@ -640,10 +643,10 @@ int main()
 					else if (p.getPosition() == 59)
 					{
 						state = GameState::Done;
-						std::string infstr{ "Player " + std::to_string(playerTurn + 1) + " Won!  Dice rolled:" };
-						for (size_t i{}; i < 10; ++i)
+						std::string infstr{ "Player " + std::to_string(playerTurn + 1) + " Won! - - Dice rolled: " };
+						for (size_t i{}; i < ROLLTOTALS; ++i)
 						{
-							if (i % 5 == 0)
+							if (i == 3)
 								infstr += '\n';
 							infstr += std::to_string(i + 2) + "-" + std::to_string(diceRolls[i]) + ",  ";
 						}
@@ -682,8 +685,12 @@ int main()
 			window.display();
 		}
 
-		Button_t playagain{ {300.f,490.f},{300.f,80.f}, "Play again?" };
-		while (!exit)
+		// Display end credits
+		Button_t playagain{ {300.f,460.f},{300.f,80.f}, "Play again?" };
+		sf::Text credits{ "Credits:\nArrow texture by Unicon Labs from Flaticon.com\nPlayer texture from icons8.com", Settings::font, 20u };
+		credits.setPosition({ 203.f, 550.f });
+		bool clicked{};
+		while (!exit && !clicked)
 		{
 			sf::Event event{};
 			while (window.pollEvent(event))
@@ -696,7 +703,7 @@ int main()
 					playagain.poll({ (float)event.mouseMove.x, (float)event.mouseMove.y });
 				else if (event.type == sf::Event::MouseButtonPressed)
 				{
-					exit = !playagain.isHovered();
+					clicked = playagain.isHovered();
 				}
 			}
 
@@ -704,10 +711,10 @@ int main()
 			window.clear();
 			window.draw(board);
 			window.draw(information);
-			window.draw(result);
 			for (auto& p : players)
 				window.draw(p);
 			window.draw(playagain);
+			window.draw(credits);
 			window.display();
 		}
 	}
