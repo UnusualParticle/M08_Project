@@ -687,7 +687,7 @@ int main()
 
 		// Display end credits
 		Button_t playagain{ {300.f,460.f},{300.f,80.f}, "Play again?" };
-		sf::Text credits{ "Credits:\nArrow texture by Unicon Labs from Flaticon.com\nPlayer texture from icons8.com", Settings::font, 20u };
+		sf::Text credits{ "Credits:\nArrow texture by Unicon Labs from Flaticon.com\nPawn icon by Icons8.com", Settings::font, 20u };
 		credits.setPosition({ 203.f, 550.f });
 		bool clicked{};
 		while (!exit && !clicked)
