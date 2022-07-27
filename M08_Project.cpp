@@ -1,11 +1,12 @@
 /*
 * Program name: M08_Project.cpp
 * Author: Donovan Blake
+* Date started: 7/25/2022
 * Date last updated: today
 * Purpose: Play the board game Sorry!
 */
 
-// Using the SFML 2.5.1 Library for graphics
+// Using the SFML 2.5.1 Library for graphics and system API
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 #include <SFML/Window.hpp>
@@ -21,7 +22,6 @@ namespace Settings
 	//	Arrow PNG: <a href="https://www.flaticon.com/free-icons/arrow" title="arrow icons">Arrow icons created by Uniconlabs - Flaticon</a>, 'image: Flaticon.com'. This cover has been designed using resources from Flaticon.com
 	//  Player PNG: <a target="_blank" href="https://icons8.com/icon/8uSoJLfHWY3D/pawn">Pawn</a> icon by <a target="_blank" href="https://icons8.com">Icons8</a>
 	
-
 	const sf::Vector2f windowSize{ 900, 900 };
 	const sf::Vector2f gridSize{ 90,90 };
 	const size_t PLAYERS{ 4 };
@@ -162,17 +162,19 @@ public:
 		m_sprite.setPosition(pos);
 	}
 
-	// Move the player
-	void move(int m, bool direct = false)
+	// Move the player. Returns false if player cannot move
+	bool move(int m, bool direct = false)
 	{
-		if (!direct)
+		if (direct)
+		{
+			m_pos = m;
+			setPosition();
+		}
+		else if (m + m_pos < 60)
 			m_buffer = m;
 		else
-			m_pos = m;
-
-		// Set position is down here in case m_pos is > 59
-		if (direct)
-			setPosition();
+			return false;
+		return true;
 	}
 
 	// Swap positions with another player
@@ -365,7 +367,7 @@ float Button_t::PADDING{ 10.f };
 sf::Color Button_t::FILL{ sf::Color::Black };
 sf::Color Button_t::FILLHOVER{ 100,100,100 };
 sf::Color Button_t::LINECOLOR{ sf::Color::White };
-float Button_t::LINESIZE{ -5.f };
+float Button_t::LINESIZE{ -4.f };
 sf::Color Button_t::TEXTCOLOR(sf::Color::White);
 
 // Ask for number of players
@@ -416,36 +418,6 @@ size_t promptPlayers(sf::RenderWindow& window)
 	return players;
 }
 
-// Ask to play again
-bool promptAgain(sf::RenderWindow& window)
-{
-	Button_t playagain{ {360.f,490.f},{180,74}, "Play again?" };
-	bool exit{};
-	while (!exit)
-	{
-		sf::Event event{};
-		while (window.pollEvent(event))
-		{
-			// Close the window
-			if (event.type == sf::Event::Closed)
-				exit = true;
-
-			if (event.type == sf::Event::MouseMoved)
-				playagain.poll({ (float)event.mouseMove.x, (float)event.mouseMove.y });
-			else if (event.type == sf::Event::MouseButtonPressed)
-			{
-				exit = playagain.isHovered();
-			}
-		}
-
-		window.clear();
-		window.draw(playagain);
-		window.display();
-	}
-
-	return exit;
-}
-
 // Game states
 enum class GameState
 {
@@ -461,7 +433,7 @@ int main()
 	Settings::initialize();
 
 	sf::Sprite board{ Settings::boardTexture };
-	Button_t roll{ {225,720},{180,74},"Roll" };
+	Button_t roll{ {225.f,720.f},{160.f,80.f},"Roll" };
 
 	Dice_t d0{};
 	Dice_t d1{};
@@ -481,7 +453,7 @@ int main()
 		size_t playerCount{ promptPlayers(window) };
 		std::vector<Player_t> players{};
 		players.resize(playerCount);
-		int diceRolls[10]{};
+		int diceRolls[11]{};
 
 
 		// Play the game
@@ -506,8 +478,6 @@ int main()
 					{
 						if (roll.isHovered())
 						{
-							if (rollAgain)
-								rollAgain = false;
 							d0.roll();
 							d1.roll();
 							state = GameState::Rolling;
@@ -526,9 +496,14 @@ int main()
 					// Simplify code, thanks
 					auto& p{ players[playerTurn] };
 
+					// Add sum to roll list
+					int sum{ d0.value() + d1.value() };
+					++diceRolls[sum - 2];
+
 					// Check for double
+					// specialdouble prevents normal movement
 					bool specialdouble{};
-					if (true || d0.value() == d1.value())
+					if (d0.value() == d1.value())
 					{
 						// Rolled a double already
 						if (rollAgain)
@@ -536,36 +511,41 @@ int main()
 							p.move(-1, true);
 							rollAgain = false;
 							specialdouble = true;
-							information.setString("Rolled two doubles in a row! Start over!");
+							result.setString("Rolled two doubles in a row!\nStart over!");
 						}
 						// Starting
 						else if (p.getPosition() < 0)
 						{
 							p.move(0, true);
+							rollAgain = false;
 							specialdouble = true;
-							information.setString("Rolled a double. Now you can start moving!");
+							result.setString("Rolled a double.\nNow you can start moving!");
 						}
+						// Default operation
 						else
 							rollAgain = true;
 					}
+					// Not a double, at start
+					else if (p.getPosition() < 0)
+						result.setString("Not a double...\nBetter luck next time!");
+					// Default
 					else
 						rollAgain = false;
 
 					// Check the roll total
-					int sum{ d0.value() + d1.value() };
-					++diceRolls[sum - 2];
 					if (!specialdouble && p.getPosition() >= 0)
 					{
+						bool moveOK{ true };
 						size_t id{};
 						switch (sum)
 						{
 						case 2:
 							result.setString("Rolled a 2\nMove forward 2 spaces");
-							p.move(2);
+							moveOK = p.move(2);
 							break;
 						case 3:
 							result.setString("Rolled a 3\nMove forward 3 spaces");
-							p.move(3);
+							moveOK = p.move(3);
 							break;
 						case 4:
 							result.setString("Rolled a 4\nMove backward 1 space");
@@ -577,34 +557,28 @@ int main()
 							break;
 						case 6:
 							result.setString("Rolled a 6\nMove forward 6 spaces");
-							p.move(6);
+							moveOK = p.move(6);
 							break;
 						case 7:
 							result.setString("Rolled a 7\nSwap places with the player at the back");
 							id = p.getID();
 							for (auto& i : players)
 							{
-								if (i.getPosition() < players[id].getPosition())
+								if (i.getPosition() >=0 && i.getPosition() < players[id].getPosition())
 									id = i.getID();
 							}
-							if (id == p.getID())
-								information.setString("You are already in the back!");
-							else
-							{
-								p.swap(players[id]);
-								information.setString("Swapped places with player " + std::to_string(id+1));
-							}
+							p.swap(players[id]);
 							break;
 						case 8:
 							result.setString("Rolled an 8\nDo nothing");
 							break;
 						case 9:
 							result.setString("Rolled a 9\nMove forward 9 spaces");
-							p.move(9);
+							moveOK = p.move(9);
 							break;
 						case 10:
 							result.setString("Rolled a 10\nMove forward 10 spaces");
-							p.move(10);
+							moveOK = p.move(10);
 							break;
 						case 11:
 							result.setString("Rolled an 11\nSwap places with the front player");
@@ -614,18 +588,15 @@ int main()
 								if (i.getPosition() > players[id].getPosition())
 									id = i.getID();
 							}
-							if (id == p.getID())
-								information.setString("You are already in the front!");
-							else
-							{
-								p.swap(players[id]);
-								information.setString("Swapped places with player " + std::to_string(id+1));
-							}
+							p.swap(players[id]);
 							break;
 						case 12:
 							result.setString("Rolled a 12\nRestart from the begining");
+							rollAgain = false;
 							p.move(-1, true);
 						}
+						if (!moveOK)
+							result.setString("Rolled too high!\nCannot pass WIN");
 					}
 					state = GameState::Moving;
 				}
@@ -665,7 +636,7 @@ int main()
 						else
 							information.setString("Player " + std::to_string(playerTurn + 1) + " turn");
 					}
-					else if (!rollAgain)
+					else if (p.getPosition() == 59)
 					{
 						state = GameState::Done;
 						std::string infstr{ "Player " + std::to_string(playerTurn + 1) + " Won!  Dice rolled:" };
@@ -673,14 +644,17 @@ int main()
 						{
 							if (i % 5 == 0)
 								infstr += '\n';
-							infstr += std::to_string(i + 2) + ": " + std::to_string(diceRolls[i]) + " - ";
+							infstr += std::to_string(i + 2) + "-" + std::to_string(diceRolls[i]) + ",  ";
 						}
+						information.setString(infstr);
 					}
-					else
+					else if (rollAgain)
 					{
 						state = GameState::Ready;
 						information.setString("You rolled a double. Roll again!");
 					}
+					else
+						throw std::exception{ "I am confusion" };
 				}
 			}
 
@@ -693,14 +667,48 @@ int main()
 			window.draw(d1);
 			if (state == GameState::Ready)
 				window.draw(roll);
+			// draw the current player on top
+			Player_t* current{};
 			for (auto& p : players)
-				window.draw(p);
+			{
+				if (p.getID() != playerTurn)
+					window.draw(p);
+				else
+					current = &p;
+			}
+			if (current)
+				window.draw(*current);
 			window.display();
 		}
-		
-		// Ask the player to play again
-		if (!exit)
-			exit = promptAgain(window);
+
+		Button_t playagain{ {300.f,490.f},{300.f,80.f}, "Play again?" };
+		while (!exit)
+		{
+			sf::Event event{};
+			while (window.pollEvent(event))
+			{
+				// Close the window
+				if (event.type == sf::Event::Closed)
+					exit = true;
+
+				if (event.type == sf::Event::MouseMoved)
+					playagain.poll({ (float)event.mouseMove.x, (float)event.mouseMove.y });
+				else if (event.type == sf::Event::MouseButtonPressed)
+				{
+					exit = !playagain.isHovered();
+				}
+			}
+
+			// Draw everything
+			window.clear();
+			window.draw(board);
+			window.draw(information);
+			window.draw(result);
+			for (auto& p : players)
+				window.draw(p);
+			window.draw(playagain);
+			window.display();
+		}
 	}
 	window.close();
 
