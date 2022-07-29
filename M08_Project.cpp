@@ -434,7 +434,6 @@ int main()
 	sf::RenderWindow window{ {(size_t)Settings::windowSize.x, (size_t)Settings::windowSize.y},"Sorry!"};
 	Settings::initialize();
 
-
 	bool exit{};
 	while (!exit)
 	{
@@ -461,7 +460,7 @@ int main()
 		result.setPosition({ 203.f,530.f });
 
 		// Play the game
-		GameState state{};
+		GameState state{GameState::Ready};
 		size_t playerTurn{};
 		bool rollAgain{};
 		while (state != GameState::Done && !exit)
@@ -687,8 +686,10 @@ int main()
 
 		// Display end credits
 		Button_t playagain{ {300.f,460.f},{300.f,80.f}, "Play again?" };
-		sf::Text credits{ "Credits:\nArrow texture by Unicon Labs from Flaticon.com\nPawn icon by Icons8.com", Settings::font, 20u };
-		credits.setPosition({ 203.f, 550.f });
+		sf::Text credits{ "Credits:\nArrow texture by Unicon Labs from Flaticon.com\nPawn icon by Icons8.com\nBoard designed by Donovan Blake", Settings::font, 20u };
+		credits.setPosition({ 203.f, 530.f });
+		credits.setOutlineColor(sf::Color::Black);
+		credits.setOutlineThickness(1);
 		bool clicked{};
 		while (!exit && !clicked)
 		{
